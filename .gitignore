@@ -1,0 +1,32 @@
+# compilation and distribution
+__pycache__
+_ext
+*.pyc
+*.pyd
+*.so
+*.dll
+*.egg-info/
+build/
+dist/
+wheels/
+*.venv
+
+# Editor temporaries
+*.swn
+*.swo
+*.swp
+*~
+
+# editor settings
+.idea
+.vscode
+_darcs
+
+# pytorch/python/numpy formats
+*.pth
+*.pkl
+*.npy
+*.ts
+
+# folders
+assets/poker_deck/*
