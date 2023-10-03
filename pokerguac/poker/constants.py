@@ -1,6 +1,5 @@
 from enum import Enum
 
-
 # fmt: off
 POKER_CARD_DECK = [
     "ac", "ad", "ah", "as",
