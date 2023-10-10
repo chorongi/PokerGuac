@@ -58,11 +58,3 @@ while not table.finished():
             after_total_pot,
         )
     iter += 1
-
-# from pokerguac.poker.rules import StraightFlush, Royal
-# from pokerguac.poker.card import PokerCard
-
-# cards = ["as", "ts", "qs", "9s", "js", "ks"]
-# cards = [PokerCard(cs[0], cs[1]) for cs in cards]
-# print(StraightFlush.check(cards))
-# print(StraightFlush(cards))
