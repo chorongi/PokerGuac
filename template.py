@@ -1,28 +1,38 @@
-from .poker import PokerTable, PokerPlayer
+"""
+Starting Template
 
+Once you have learned how to use classes, you can begin your program with this
+template.
 
-def visualize_player(player: PokerPlayer):
-    pass
-
-
-def visualize_table(table: PokerTable):
-    pass
-
-
+If Python and Arcade are installed, this example can be run from the command line with:
+python -m arcade.examples.starting_template
+"""
 import arcade
 
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
-SCREEN_TITLE = "PokerGuac"
+SCREEN_TITLE = "Starting Template"
 
 
-class PokerGuacEngine(arcade.Window):
-    def __init__(self, width: int, height: int, title: str):
+class MyGame(arcade.Window):
+    """
+    Main application class.
+
+    NOTE: Go ahead and delete the methods you don't need.
+    If you do need a method, delete the 'pass' and replace it
+    with your own code. Don't leave 'pass' in this program.
+    """
+
+    def __init__(self, width, height, title):
         super().__init__(width, height, title)
+
         arcade.set_background_color(arcade.color.AMAZON)
 
+        # If you have sprite lists, you should create them here,
+        # and set them to None
+
     def setup(self):
-        """Set up the game variables. Call to re-start the game."""
+        """ Set up the game variables. Call to re-start the game. """
         # Create your sprites and sprite lists here
         pass
 
@@ -77,3 +87,14 @@ class PokerGuacEngine(arcade.Window):
         Called when a user releases a mouse button.
         """
         pass
+
+
+def main():
+    """ Main function """
+    game = MyGame(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+    game.setup()
+    arcade.run()
+
+
+if __name__ == "__main__":
+    main()
