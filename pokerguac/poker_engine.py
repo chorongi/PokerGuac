@@ -1,4 +1,5 @@
-from .poker import PokerTable, PokerPlayer
+from .poker_table import PokerTable
+from poker import PokerPlayer
 
 
 def visualize_player(player: PokerPlayer):

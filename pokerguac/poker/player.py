@@ -1,10 +1,22 @@
 import numpy as np
 
+from enum import Enum
 from typing import Optional, List, Tuple
+from ..agents import PokerAgent
 from .card import PokerHole, PokerBoard
-from .agents import PlayerAction
 
 MAX_HAND_CACHE_SIZE = 10
+
+
+class PlayerAction(Enum):
+    WAITING = 0
+    CALL = 1
+    RAISE = 2
+    FOLD = 3
+    SMALL_BLIND = 4
+    BIG_BLIND = 5
+    STRADDLE = 6
+    SITTING_OUT = 7
 
 
 class PokerPlayer:
@@ -16,12 +28,15 @@ class PokerPlayer:
     eliminated: bool = False
     _past_hands: List[PokerHole] = []
 
-    def __init__(self, name: str, buy_in: float, num_buy_ins: int):
+    def __init__(
+        self, name: str, buy_in: float, num_buy_ins: int, action_agent: PokerAgent
+    ):
         self.name = name
         self.stack = buy_in
         self.left_num_buy_ins = num_buy_ins
         self._hole = None
-        # self.action_agent = action_agent
+        self.last_action = PlayerAction.SITTING_OUT
+        self.action_agent = action_agent
 
     def get_card(self, hole: PokerHole):
         assert self._hole is None
@@ -33,13 +48,14 @@ class PokerPlayer:
     def action(
         self,
         board: PokerBoard,
-        per_player_bet: List[float],
+        per_player_bet: np.ndarray,
         per_player_state: List[List[PlayerAction]],
         big_blind: float,
         button_position: int,
         my_position: int,
     ) -> Tuple[float, PlayerAction]:
         assert len(board) == 5
+        assert len(per_player_bet) == len(per_player_state)
         action = PlayerAction.CALL
         bet = np.max(per_player_bet) - per_player_bet[my_position]
         prev_bet = 0.0
@@ -103,7 +119,7 @@ class PokerPlayer:
         return str.__hash__(self.name)
 
     def __str__(self):
-        return self.name
+        return f"{self.name}: {self.stack}"
 
     def __repr__(self):
         return self.__str__()

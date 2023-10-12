@@ -1,6 +1,7 @@
 import numpy as np
 
-from pokerguac.poker import PokerPlayer, PokerTable
+from pokerguac.poker import PokerPlayer
+from pokerguac import PokerTable
 
 
 num_players = 9
@@ -32,7 +33,7 @@ players = [
     for i in range(num_players)
 ]
 table = PokerTable(
-    players=players,
+    num_players=num_players,
     big_blind=big_blind,
     small_blind=small_blind,
     min_buy_in=min_buy_in,
@@ -42,7 +43,6 @@ table = PokerTable(
 before_total_pot = 0
 for player in players:
     before_total_pot += player.stack
-
 
 iter = 0
 while not table.finished():
