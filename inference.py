@@ -1,8 +1,8 @@
 import numpy as np
 
 from pokerguac.poker import PokerPlayer
+from pokerguac.poker import build_action_agent
 from pokerguac import PokerTable
-
 
 num_players = 9
 player_names = [
@@ -29,6 +29,7 @@ players = [
         player_names[i],
         np.random.uniform(min_buy_in, max_buy_in),
         num_buy_ins=num_buy_in,
+        action_agent=build_action_agent("simple"),
     )
     for i in range(num_players)
 ]
@@ -39,6 +40,8 @@ table = PokerTable(
     min_buy_in=min_buy_in,
     max_buy_in=max_buy_in,
 )
+for player in players:
+    table.seat_player(player)
 
 before_total_pot = 0
 for player in players:

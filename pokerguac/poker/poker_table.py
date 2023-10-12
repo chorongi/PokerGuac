@@ -2,11 +2,10 @@ import numpy as np
 
 from typing import List, Dict, Optional
 
-from .agents import PlayerAction
-from .poker.constants import POKER_CARD_DECK
-from .poker.player import PokerPlayer
-from .poker.card import PokerCard, PokerBoard
-from .poker.rules import rank_hands
+from .components.constants import POKER_CARD_DECK
+from .components.card import PokerCard, PokerBoard
+from .poker_player import PokerPlayer, PlayerAction
+from .components.rules import rank_hands
 
 
 CARD_DECK_SIZE = 52
@@ -331,6 +330,7 @@ class PokerTable:
         self.per_player_bet = np.zeros(self.num_players)
 
     def play_hand(self):
+        self._reset()
         self.hand_number += 1
         active_card_deck = self.preflop()
         self.flop(active_card_deck)
@@ -338,7 +338,6 @@ class PokerTable:
         self.river(active_card_deck)
         self.cashing()
         self._eliminate_players()
-        self._reset()
         self._move_button()
 
     def get_pot_size(self) -> float:

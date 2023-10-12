@@ -1,22 +1,11 @@
 import numpy as np
 
-from enum import Enum
 from typing import Optional, List, Tuple
-from ..agents import PokerAgent
-from .card import PokerHole, PokerBoard
+from .components.card import PokerHole, PokerBoard
+from .components.constants import PlayerAction
+from .agents.poker_agent import PokerAgent
 
 MAX_HAND_CACHE_SIZE = 10
-
-
-class PlayerAction(Enum):
-    WAITING = 0
-    CALL = 1
-    RAISE = 2
-    FOLD = 3
-    SMALL_BLIND = 4
-    BIG_BLIND = 5
-    STRADDLE = 6
-    SITTING_OUT = 7
 
 
 class PokerPlayer:
@@ -49,21 +38,22 @@ class PokerPlayer:
         self,
         board: PokerBoard,
         per_player_bet: np.ndarray,
-        per_player_state: List[List[PlayerAction]],
+        per_player_action: List[List[PlayerAction]],
         big_blind: float,
-        button_position: int,
-        my_position: int,
+        button_pos: int,
+        player_pos: int,
     ) -> Tuple[float, PlayerAction]:
         assert len(board) == 5
-        assert len(per_player_bet) == len(per_player_state)
-        action = PlayerAction.CALL
-        bet = np.max(per_player_bet) - per_player_bet[my_position]
-        prev_bet = 0.0
-        if action == PlayerAction.RAISE:
-            assert bet >= prev_bet + big_blind
-        if self.stack < bet:
-            action = PlayerAction.CALL
-            bet = self.stack
+        assert len(per_player_bet) == len(per_player_action)
+        bet, action = self.action_agent.action(
+            board,
+            per_player_bet,
+            per_player_action,
+            big_blind,
+            button_pos,
+            player_pos,
+            self.stack,
+        )
         self.last_action = action
         self.stack = self.stack - bet
         return bet, action
@@ -113,7 +103,10 @@ class PokerPlayer:
         return self.stack == 0 and self.last_action == PlayerAction.CALL
 
     def __eq__(self, other):
-        return self.name == other.name
+        if isinstance(other, PokerPlayer):
+            return self.name == other.name
+        else:
+            return False
 
     def __hash__(self):
         return str.__hash__(self.name)

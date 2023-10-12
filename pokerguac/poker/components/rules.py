@@ -444,7 +444,7 @@ HANDRANKING_DICT = OrderedDict(
 
 
 def get_final_hand_made(
-    board: PokerBoard, hand: PokerHole
+    board: PokerHand, hand: PokerHole
 ) -> Tuple[HandRanking, PokerHand]:
     all_cards = list(board) + list(hand)
     hand_type, result = None, None
@@ -457,10 +457,16 @@ def get_final_hand_made(
 
 
 def rank_hands(board: PokerBoard, hands: List[PokerHole]) -> List[int]:
+    assert len(board) == 5
+    for card in board:
+        assert card is not None
+    final_board = cast(PokerHand, list(board))
+
     hand_types: List[HandRanking] = []
     final_hands: List[HandType] = []
+
     for hand in hands:
-        hand_type, final_hand = get_final_hand_made(board, hand)
+        hand_type, final_hand = get_final_hand_made(final_board, hand)
         hand_types.append(hand_type)
         final_hands.append(HANDRANKING_DICT[hand_type](final_hand))
 

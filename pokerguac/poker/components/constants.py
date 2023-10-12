@@ -26,6 +26,17 @@ class PokerSuit(Enum):
     SPADE = 4
 
 
+class PlayerAction(Enum):
+    WAITING = 0
+    CALL = 1
+    RAISE = 2
+    FOLD = 3
+    SMALL_BLIND = 4
+    BIG_BLIND = 5
+    STRADDLE = 6
+    SITTING_OUT = 7
+
+
 SUIT_STRING_TO_SUIT = {
     "c": PokerSuit.ClOVER,
     "d": PokerSuit.DIAMOND,
