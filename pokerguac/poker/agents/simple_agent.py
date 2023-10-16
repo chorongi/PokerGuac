@@ -13,7 +13,7 @@ class SimpleAgent(PokerAgent):
         self,
         board: PokerBoard,
         per_player_bet: List[float],
-        per_player_action: List[List[PlayerAction]],
+        per_player_action: List[List[Tuple[PlayerAction, float]]],
         big_blind: float,
         button_pos: int,
         player_pos: int,

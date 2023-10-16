@@ -5,8 +5,8 @@ from .poker_agent import PokerAgent
 from ..components import PlayerAction, PokerBoard
 
 
-class CallingAgent(PokerAgent):
-    name: str = "calling"
+class AllInAgent(PokerAgent):
+    name: str = "all-in"
 
     # Agent that plays loose passive
     def action(
@@ -19,9 +19,11 @@ class CallingAgent(PokerAgent):
         player_pos: int,
         player_stack: float,
     ) -> Tuple[float, PlayerAction]:
-        action = PlayerAction.CALL
-        bet = np.max(per_player_bet) - per_player_bet[player_pos]
-        if player_stack < bet:
-            bet = player_stack
-        assert self.is_legal_bet(bet)
-        return bet, action
+        min_bet = np.max(per_player_bet) - per_player_bet[player_pos]
+        player_bet = player_stack
+        if min_bet >= player_bet:
+            action = PlayerAction.CALL
+        else:
+            action = PlayerAction.RAISE
+        assert self.is_legal_bet(player_bet)
+        return player_bet, action

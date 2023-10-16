@@ -14,7 +14,7 @@ class PokerAgent(ABC):
         self,
         board: PokerBoard,
         per_player_bet: np.ndarray,
-        per_player_action: List[List[PlayerAction]],
+        per_player_action: List[List[Tuple[PlayerAction, float]]],
         big_blind: float,
         button_pos: int,
         player_pos: int,
