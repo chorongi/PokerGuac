@@ -456,8 +456,11 @@ def get_final_hand_made(
     return hand_type, result
 
 
-def rank_hands(board: PokerBoard, hands: List[PokerHole]) -> List[int]:
-    assert len(board) == 5
+def rank_hands(
+    board: PokerBoard, hands: List[PokerHole]
+) -> Tuple[List[int], List[HandType]]:
+    assert len(board) == 5, board
+    assert len(hands) > 0, hands
     for card in board:
         assert card is not None
     final_board = cast(PokerHand, list(board))
@@ -469,22 +472,26 @@ def rank_hands(board: PokerBoard, hands: List[PokerHole]) -> List[int]:
         hand_type, final_hand = get_final_hand_made(final_board, hand)
         hand_types.append(hand_type)
         final_hands.append(HANDRANKING_DICT[hand_type](final_hand))
-
-    indices = list(range(len(hands)))
-    sorted_results = sorted(zip(indices, final_hands), reverse=True, key=lambda x: x[1])
-    ranks = [-1] * len(hands)
-    rank = 0
-    tie_count = 1
-    for index in range(len(sorted_results) - 1):
-        i, hand = sorted_results[index]
-        ranks[i] = rank
-        next_i, next_hand = sorted_results[index + 1]
-        if hand != next_hand:
-            rank += tie_count
-            tie_count = 1
-        else:
-            tie_count += 1
-        if index == len(sorted_results) - 2:
-            # Make sure to add rank for last hand
-            ranks[next_i] = rank
-    return ranks
+    if len(hands) == 1:
+        ranks = [0]
+    else:
+        indices = list(range(len(hands)))
+        sorted_results = sorted(
+            zip(indices, final_hands), reverse=True, key=lambda x: x[1]
+        )
+        ranks = [-1] * len(hands)
+        rank = 0
+        tie_count = 1
+        for index in range(len(sorted_results) - 1):
+            i, hand = sorted_results[index]
+            ranks[i] = rank
+            next_i, next_hand = sorted_results[index + 1]
+            if hand != next_hand:
+                rank += tie_count
+                tie_count = 1
+            else:
+                tie_count += 1
+            if index == len(sorted_results) - 2:
+                # Make sure to add rank for last hand
+                ranks[next_i] = rank
+    return ranks, final_hands

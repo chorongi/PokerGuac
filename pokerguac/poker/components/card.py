@@ -6,6 +6,13 @@ __all__ = ["PokerCard", "PokerBoard", "PokerHand", "PokerHole"]
 
 
 class PokerCard:
+    """
+    PokerCard class for Texas Holdem Poker game
+    operations like __eq__, __hash__ use only "number" component of card
+    for usage in cardops for hand rank computation.
+    (i.e. PokerCard.from_symbol('as') == PokerCard.from_symbol('ad'))
+    """
+
     _name: str
     _number: int
     _suit: PokerSuit
@@ -15,6 +22,22 @@ class PokerCard:
         self._name = f"{number}{suit}"
         self._number = NUMBER_STRING_TO_INT[number]
         self._suit = SUIT_STRING_TO_SUIT[suit]
+
+    @classmethod
+    def from_symbol(cls, symbol: str):
+        assert (
+            len(symbol) == 2
+        ), f"{symbol} is invalid. Valid symbols are [as, kd, 2h, 3c, ...]"
+        number = symbol[0].lower()
+        suit = symbol[1].lower()
+        return cls(number, suit)
+
+    def equal(self, other) -> bool:
+        return (
+            self.__class__ == other.__class__
+            and self._number == other._number
+            and self._suit == other._suit
+        )
 
     def __lt__(self, other) -> bool:
         if self.__class__ is other.__class__:

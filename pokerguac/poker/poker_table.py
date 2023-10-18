@@ -334,7 +334,7 @@ class PokerTable:
                 player_holes.append(player.open_cards())
                 candidate_players.append(player)
 
-        player_ranks = rank_hands(self.board, player_holes)
+        player_ranks, _ = rank_hands(self.board, player_holes)
         ranked_players = {}
         for rank, player in zip(player_ranks, candidate_players):
             if rank in ranked_players:

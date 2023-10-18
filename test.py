@@ -4,6 +4,7 @@ from typing import List
 from pokerguac.poker import PokerPlayer
 from pokerguac.poker import build_action_agent
 from pokerguac import PokerTable
+from pokerguac.poker.gto import probabilities
 
 num_players = 9
 player_names = [

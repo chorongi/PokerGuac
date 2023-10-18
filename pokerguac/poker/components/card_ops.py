@@ -29,7 +29,7 @@ def get_cnt_dict(cards: List[PokerCard]):
 
 def get_duplicate_cards(cards: List[PokerCard], num_duplicate: int = 2):
     """
-    If you have AATT in cards, function will return [A, T]
+    If you have AAATT23 in cards, function will return [A, T]
     """
     card_count = get_cnt_dict(cards)
     pair_cards = []
