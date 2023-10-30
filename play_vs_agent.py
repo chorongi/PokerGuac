@@ -15,7 +15,7 @@ SCREEN_TITLE = "Starting Template"
 
 def main():
     """Main function"""
-    game = PokerGuacEngine(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+    game = PokerGuacEngine()
     game.setup()
     arcade.run()
 

@@ -19,14 +19,19 @@ POKER_CARD_DECK = [
 # fmt: on
 
 
-class PokerSuit(Enum):
-    ClOVER = 1
+class PrintableEnum(Enum):
+    def __str__(self):
+        return self.name
+
+
+class PokerSuit(PrintableEnum):
+    CLOVER = 1
     DIAMOND = 2
     HEART = 3
     SPADE = 4
 
 
-class PlayerAction(Enum):
+class PlayerAction(PrintableEnum):
     CALL = 0
     RAISE = 1
     FOLD = 2
@@ -35,16 +40,17 @@ class PlayerAction(Enum):
     STRADDLE = 5
 
 
-class PlayerStatus(Enum):
+class PlayerStatus(PrintableEnum):
     CALL = 0
     RAISE = 1
     FOLD = 2
     WAITING_TURN = 3  # Waiting to make action on current stage
     WAITING_HAND = 4  # Waiting to join next hand
     SITTING_OUT = 5  # Sitting out and to stay away from game
+    ELIMINATED = 6  # Eliminated from tournament
 
 
-class PlayerPosition(Enum):
+class PlayerPosition(PrintableEnum):
     SMALLBLIND = 0
     BIGBLIND = 1
     UTG = 2
@@ -56,8 +62,22 @@ class PlayerPosition(Enum):
     BUTTON = 8
 
 
+class PokerStage(PrintableEnum):
+    PREFLOP = 0
+    FLOP = 1
+    TURN = 2
+    RIVER = 3
+
+
+ALL_POKER_STAGES = [
+    PokerStage.PREFLOP,
+    PokerStage.FLOP,
+    PokerStage.TURN,
+    PokerStage.RIVER,
+]
+
 SUIT_STRING_TO_SUIT = {
-    "c": PokerSuit.ClOVER,
+    "c": PokerSuit.CLOVER,
     "d": PokerSuit.DIAMOND,
     "h": PokerSuit.HEART,
     "s": PokerSuit.SPADE,
@@ -78,6 +98,10 @@ NUMBER_STRING_TO_INT = {
     "q": 12,
     "k": 13,
 }
+
+MAX_NUM_PLAYERS = 9
+MIN_NUM_PLAYERS = 2
+BOARD_NUM_CARDS = 5
 
 NUM_PLAYERS_TO_POSITIONS = {
     2: [PlayerPosition.SMALLBLIND, PlayerPosition.BIGBLIND],

@@ -2,14 +2,21 @@ import numpy as np
 
 from typing import List, Dict, Any, Optional, Tuple
 
-from .components.constants import POKER_CARD_DECK, NUM_PLAYERS_TO_POSITIONS
+from .components.constants import (
+    POKER_CARD_DECK,
+    NUM_PLAYERS_TO_POSITIONS,
+    ALL_POKER_STAGES,
+    MIN_NUM_PLAYERS,
+    MAX_NUM_PLAYERS,
+    BOARD_NUM_CARDS,
+    PokerStage,
+)
 from .components.card import PokerCard, PokerBoard
 from .poker_player import PokerPlayer, PlayerAction, PlayerStatus
 from .components.rules import rank_hands
 
 
 CARD_DECK_SIZE = 52
-MIN_NUM_PLAYERS = 2
 
 
 class PokerTable:
@@ -18,13 +25,13 @@ class PokerTable:
     players: List[Optional[PokerPlayer]]
     eliminated_players: Dict[PokerPlayer, int]
     button: int
+    stage: PokerStage
     big_blind: float
     small_blind: float
     min_buy_in: float
     max_buy_in: float
     hand_number: int
-    per_player_bet: np.ndarray
-    per_player_action: List[List[Tuple[PlayerAction, float]]]
+    per_player_action: Dict[PokerStage, List[List[Tuple[PlayerAction, float]]]]
 
     def __init__(
         self,
@@ -38,7 +45,8 @@ class PokerTable:
             PokerCard(card_str[0], card_str[1]) for card_str in POKER_CARD_DECK
         ]
         assert len(self.cards) == CARD_DECK_SIZE
-        self.board = [None, None, None, None, None]
+        assert num_players >= MIN_NUM_PLAYERS and num_players <= MAX_NUM_PLAYERS
+        self.board = [None] * BOARD_NUM_CARDS
         self.players = [None for _ in range(num_players)]
         self.num_players = num_players
         self.eliminated_players = {}
@@ -93,15 +101,20 @@ class PokerTable:
             if player is None:
                 continue
             player.reset_hand()
-        self.per_player_bet = np.zeros(self.num_players)
-        self.per_player_action = [[] for _ in range(self.num_players)]
+            if np.isclose(player.stack, 0):
+                # Ask player to buy in
+                buy_in = np.random.uniform(low=self.min_buy_in, high=self.max_buy_in)
+                player.buy_in(buy_in)
+        self.per_player_action = {
+            stage: [[] for _ in range(self.num_players)] for stage in ALL_POKER_STAGES
+        }
+        self.stage = PokerStage.PREFLOP
 
     def _blind(self):
         small_blind = self.players[self.player_in_action]
         assert small_blind is not None
         bet = small_blind.blind(self.small_blind, self.big_blind)
-        self.per_player_bet[self.player_in_action] += bet
-        self.per_player_action[self.player_in_action].append(
+        self.per_player_action[self.stage][self.player_in_action].append(
             (PlayerAction.SMALL_BLIND, bet)
         )
         self._next()
@@ -109,32 +122,31 @@ class PokerTable:
         big_blind = self.players[self.player_in_action]
         assert big_blind is not None
         bet = big_blind.blind(self.big_blind, self.big_blind)
-        self.per_player_bet[self.player_in_action] += bet
-        self.per_player_action[self.player_in_action].append(
+        self.per_player_action[self.stage][self.player_in_action].append(
             (PlayerAction.BIG_BLIND, bet)
         )
         if big_blind.status == PlayerStatus.RAISE and not small_blind.is_all_in():
             small_blind.status = PlayerStatus.WAITING_TURN
         self._next()
 
+    def get_player_stacks(self):
+        stacks = []
+        for i in range(self.num_players):
+            player = self.players[i]
+            if player is None:
+                stacks.append(0.0)
+            else:
+                stacks.append(player.stack)
+        return stacks
+
     def _straddle(self):
         if self.get_num_active_players() > 0:
             straddle_player = self.players[self.player_in_action]
             assert straddle_player is not None
-            stacks = []
-            for i in range(self.num_players):
-                player = self.players[i]
-                if player is None:
-                    stacks.append(0.0)
-                else:
-                    stacks.append(player.stack)
-
-            other_stacks = (
-                stacks[: self.player_in_action] + stacks[self.player_in_action + 1 :]
-            )
-            if straddle_player.straddle(other_stacks, self.big_blind):
-                self.per_player_bet[self.player_in_action] += 2 * self.big_blind
-                self.per_player_action[self.player_in_action].append(
+            if straddle_player.straddle(
+                self.get_player_stacks(), self.player_in_action, self.big_blind
+            ):
+                self.per_player_action[self.stage][self.player_in_action].append(
                     (PlayerAction.STRADDLE, 2 * self.big_blind)
                 )
                 self._next()
@@ -168,14 +180,12 @@ class PokerTable:
                 continue
             elif player.status == PlayerStatus.WAITING_TURN:
                 action_finished = False
-            elif player.last_action == PlayerAction.RAISE and not player.is_all_in():
+            elif player.status == PlayerAction.RAISE and not player.is_all_in():
                 raise_counter += 1
 
         if raise_counter >= MIN_NUM_PLAYERS:
             action_finished = False
-        # if self.get_num_active_players() < MIN_NUM_PLAYERS:
-        #     # Only one person left in hand to take action
-        #     action_finished = True
+
         return action_finished
 
     def _action(self):
@@ -185,14 +195,14 @@ class PokerTable:
             assert curr_player.stack > 0, curr_player.stack
             bet, action = curr_player.action(
                 self.board,
-                self.per_player_bet,
                 self.per_player_action,
-                self.big_blind,
-                self.button,
+                self.get_player_stacks(),
                 self.player_in_action,
+                self.big_blind,
             )
-            self.per_player_bet[self.player_in_action] += bet
-            self.per_player_action[self.player_in_action].append((action, bet))
+            self.per_player_action[self.stage][self.player_in_action].append(
+                (action, bet)
+            )
             if action == PlayerAction.RAISE:
                 for player in self.players:
                     if (
@@ -221,12 +231,11 @@ class PokerTable:
                 continue
             else:
                 assert player.stack >= 0, (player.name, player.stack)
-                if player.stack == 0:
-                    # Try to Buy In Player
-                    buy_in = np.random.uniform(
-                        low=self.min_buy_in, high=self.max_buy_in
-                    )
-                    player.buy_in(buy_in)
+                if np.isclose(player.stack, 0):
+                    # TODO: Try to Buy In Player with a random amount
+                    player.status = PlayerStatus.SITTING_OUT
+                    if player.left_num_buy_ins == 0:
+                        player.status = PlayerStatus.ELIMINATED
                     if player.is_eliminated() and player not in self.eliminated_players:
                         # Eliminate Player
                         self.eliminated_players[player] = self.hand_number
@@ -274,9 +283,24 @@ class PokerTable:
                 live_players.append(player)
         return live_players
 
+    def get_per_player_bets(self) -> List[float]:
+        """
+        get per player total bet in current stage (for display)
+        """
+        stage_actions = self.per_player_action[self.stage]
+        assert len(stage_actions) == self.num_players
+        player_bets = []
+        for i in range(self.num_players):
+            total_bet = 0
+            for action, bet in stage_actions[i]:
+                total_bet += bet
+            player_bets.append(total_bet)
+        return player_bets
+
     def preflop(self):
         assert self.get_num_active_players() >= MIN_NUM_PLAYERS
         assert self.get_num_active_players() == self.get_curr_hand_num_players()
+        self.stage = PokerStage.PREFLOP
         self.player_in_action = self.button
         self._next()
         self._blind()
@@ -289,6 +313,7 @@ class PokerTable:
 
     def flop(self, card_deck: List[PokerCard]):
         assert len(card_deck) == CARD_DECK_SIZE - 2 * self.get_curr_hand_num_players()
+        self.stage = PokerStage.FLOP
         card_deck.pop()
         for i in range(3):
             self.board[i] = card_deck.pop()
@@ -301,6 +326,7 @@ class PokerTable:
         assert (
             len(card_deck) == CARD_DECK_SIZE - 2 * self.get_curr_hand_num_players() - 4
         )
+        self.stage = PokerStage.TURN
         card_deck.pop()
         self.board[3] = card_deck.pop()
         self.player_in_action = self.button
@@ -312,6 +338,7 @@ class PokerTable:
         assert (
             len(card_deck) == CARD_DECK_SIZE - 2 * self.get_curr_hand_num_players() - 6
         )
+        self.stage = PokerStage.RIVER
         card_deck.pop()
         self.board[4] = card_deck.pop()
         self.player_in_action = self.button
@@ -343,6 +370,7 @@ class PokerTable:
                 ranked_players[rank] = [self.players.index(player)]
 
         total_pot = self.get_pot_size()
+        per_player_bet = PokerPlayer.per_player_action_to_bet(self.per_player_action)
         for rank in sorted(ranked_players.keys()):
             if np.allclose(total_pot, 0):
                 break
@@ -353,7 +381,7 @@ class PokerTable:
             else:
                 num_ties = len(ranked_players[rank])
                 players = [self.players[i] for i in ranked_players[rank]]
-                bets = np.array([self.per_player_bet[i] for i in ranked_players[rank]])
+                bets = np.array([per_player_bet[i] for i in ranked_players[rank]])
                 players_and_bets = sorted(zip(players, bets), key=lambda x: x[1])
                 players, bets = [x[0] for x in players_and_bets], [
                     x[1] for x in players_and_bets
@@ -361,7 +389,7 @@ class PokerTable:
                 bets = np.array([0] + bets)
                 bets = bets[1:] - bets[:-1]
                 rank_cashed_outs = np.zeros(self.num_players)
-                per_player_bets = self.per_player_bet
+                per_player_bets = per_player_bet
                 for i, player in enumerate(players):
                     cashed_out_bets = np.zeros(self.num_players)
                     for j in range(i + 1):
@@ -377,11 +405,11 @@ class PokerTable:
                     total_pot = total_pot - np.sum(cashed_out_bets)
                     num_ties = num_ties - 1
 
-                self.per_player_bet = self.per_player_bet - rank_cashed_outs
+                per_player_bet = per_player_bet - rank_cashed_outs
 
         assert np.allclose(total_pot, 0), total_pot
-        assert np.allclose(self.per_player_bet, np.zeros(self.num_players)), (
-            self.per_player_bet,
+        assert np.allclose(per_player_bet, np.zeros(self.num_players)), (
+            per_player_bet,
             np.zeros(self.num_players),
         )
         assert np.allclose(pre_cash_stack + pot_size, self.get_table_stack_size()), (
@@ -389,10 +417,10 @@ class PokerTable:
             pot_size,
             self.get_table_stack_size(),
         )
-        self.per_player_bet = np.zeros(self.num_players)
 
     def play_hand(self):
         self.hand_number += 1
+        self._reset()
         self._assign_positions()
         active_card_deck = self.preflop()
         self.flop(active_card_deck)
@@ -400,11 +428,10 @@ class PokerTable:
         self.river(active_card_deck)
         self.cashing()
         self._eliminate_players()
-        self._reset()
         self._move_button()
 
     def get_pot_size(self) -> float:
-        return np.sum(self.per_player_bet)
+        return np.sum(PokerPlayer.per_player_action_to_bet(self.per_player_action))
 
     def get_table_stack_size(self) -> float:
         stack = 0
@@ -453,7 +480,7 @@ class PokerTable:
             report[player] = {}
             report[player]["name"] = player.name
             report[player]["stack"] = player.stack
-            assert player.stack == 0
+            assert np.isclose(player.stack, 0)
             report[player]["num_hands_played"] = self.eliminated_players[player]
 
         for player in self.get_live_players():

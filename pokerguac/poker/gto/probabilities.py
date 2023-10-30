@@ -74,37 +74,3 @@ def compute_hand_strength(
     avg_losing_prob = float(avg_losing_prob / num_cases)
     assert avg_winning_prob + avg_draw_prob + avg_losing_prob == 1
     return avg_winning_prob, avg_draw_prob, avg_losing_prob
-
-
-board = [
-    None,
-    None,
-    None,
-    None,
-    None,
-]
-
-test_holes = [
-    (PokerCard.from_symbol("ad"), PokerCard.from_symbol("ac")),
-    (PokerCard.from_symbol("kd"), PokerCard.from_symbol("kc")),
-    (PokerCard.from_symbol("qd"), PokerCard.from_symbol("qc")),
-    (PokerCard.from_symbol("jd"), PokerCard.from_symbol("jc")),
-    (PokerCard.from_symbol("td"), PokerCard.from_symbol("tc")),
-    (PokerCard.from_symbol("ts"), PokerCard.from_symbol("th")),
-    (PokerCard.from_symbol("9s"), PokerCard.from_symbol("9h")),
-    (PokerCard.from_symbol("8s"), PokerCard.from_symbol("8h")),
-    (PokerCard.from_symbol("7d"), PokerCard.from_symbol("7c")),
-    (PokerCard.from_symbol("2d"), PokerCard.from_symbol("2c")),
-    (PokerCard.from_symbol("kd"), PokerCard.from_symbol("jc")),
-    (PokerCard.from_symbol("ks"), PokerCard.from_symbol("js")),
-    (PokerCard.from_symbol("as"), PokerCard.from_symbol("ts")),
-    (PokerCard.from_symbol("as"), PokerCard.from_symbol("th")),
-    (PokerCard.from_symbol("as"), PokerCard.from_symbol("4s")),
-    (PokerCard.from_symbol("as"), PokerCard.from_symbol("4h")),
-    (PokerCard.from_symbol("jh"), PokerCard.from_symbol("tc")),
-    (PokerCard.from_symbol("2h"), PokerCard.from_symbol("7c")),
-]
-
-for hole in test_holes:
-    print(hole, board)
-    print(compute_hand_strength(hole, cast(PokerBoard, board)))
