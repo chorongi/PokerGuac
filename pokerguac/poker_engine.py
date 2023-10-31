@@ -13,8 +13,8 @@ from .arcade import ArcadePokerCard
 from typing import List, Optional, Tuple
 
 
-SCREEN_WIDTH = 1200
-SCREEN_HEIGHT = 600
+SCREEN_WIDTH = 1600
+SCREEN_HEIGHT = 900
 CARD_WIDTH_HEIGHT_RATIO = 1.452
 SCREEN_TITLE = "PokerGuac"
 
@@ -95,6 +95,7 @@ def poker_cache_game_init(
         min_buy_in=min_buy_in,
         max_buy_in=max_buy_in,
     )
+    table.simulation_on()
 
     for player in players:
         player.try_buy_in(min_buy_in, max_buy_in)
@@ -118,8 +119,8 @@ class PokerGuacEngine(arcade.Window):
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)  # type: ignore hkwark
         arcade.set_background_color(arcade.color.AMAZON)  # type: ignore hkwark
 
-        self.player_card_width = int(self.width / 50)
-        self.board_card_width = int(self.width / 20)
+        self.player_card_width = int(self.width / 30)
+        self.board_card_width = int(self.width / 15)
         self.player_card_height = int(self.player_card_width * CARD_WIDTH_HEIGHT_RATIO)
         self.board_card_height = int(self.board_card_width * CARD_WIDTH_HEIGHT_RATIO)
         self.margin = int(self.width / 50)
@@ -138,7 +139,7 @@ class PokerGuacEngine(arcade.Window):
         # Outer Circle
         major_axis = self.width * 0.85
         minor_axis = self.height * 0.85
-        cx = self.width / 2 - self.player_card_width - self.margin
+        cx = self.width / 2 - self.margin
         cy = self.height / 2 + self.player_card_height / 2
         self.index_to_player_outer_xy = [
             (
@@ -322,7 +323,7 @@ class PokerGuacEngine(arcade.Window):
             self.board_mat_list.append(pile)
 
             if board_card is not None:
-                arcade_card = ArcadePokerCard(board_card, width=self.player_card_width)
+                arcade_card = ArcadePokerCard(board_card, width=self.board_card_width)
                 arcade_card.position = card_pos
                 self.board_card_list.append(arcade_card)
 
@@ -361,7 +362,11 @@ class PokerGuacEngine(arcade.Window):
         Normally, you'll call update() on the sprite lists that
         need it.
         """
-        pass
+        if self.table.finished():
+            print("=====================================================")
+            print(self.table.player_rankings_report()[1])
+        else:
+            self.table.play_hand()
 
     def on_key_press(self, key, key_modifiers):
         """

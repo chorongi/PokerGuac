@@ -1,4 +1,5 @@
 import numpy as np
+import time
 
 from typing import List, Dict, Any, Optional, Tuple
 
@@ -31,6 +32,7 @@ class PokerTable:
     min_buy_in: float
     max_buy_in: float
     hand_number: int
+    simulation_mode: bool = False
     per_player_action: Dict[PokerStage, List[List[Tuple[PlayerAction, float]]]]
 
     def __init__(
@@ -186,6 +188,8 @@ class PokerTable:
 
     def _action(self):
         while not self._action_finished():
+            if self.simulation_mode:
+                time.sleep(1)
             curr_player = self.players[self.player_in_action]
             assert curr_player is not None
             assert curr_player.stack > 0, curr_player.stack
@@ -453,6 +457,12 @@ class PokerTable:
 
     def finished(self):
         return self.get_num_live_players() < MIN_NUM_PLAYERS
+
+    def simulation_on(self):
+        self.simulation_mode = True
+
+    def simulation_off(self):
+        self.simulation_mode = False
 
     def player_rankings(self) -> List[PokerPlayer]:
         num_alive = self.get_num_live_players()
