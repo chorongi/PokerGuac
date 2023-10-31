@@ -16,22 +16,28 @@ MAX_HAND_CACHE_SIZE = 100
 
 class PokerPlayer:
     name: str
-    left_num_buy_ins: int
     stack: float
     position: Optional[PlayerPosition]
     status: PlayerStatus
     hole: Optional[PokerHole]
     past_hands = Queue(MAX_HAND_CACHE_SIZE)
+    bank_roll: float
+    start_bank_roll: float
+    time_bank: Optional[float] = None
+    left_num_buy_ins: Optional[int] = None
 
-    def __init__(self, name: str, num_buy_ins: int, action_agent: PokerAgent):
+    def __init__(self, name: str, action_agent: PokerAgent, bank_roll: float):
         self.name = name
+        self.action_agent = action_agent
+        self.bank_roll = bank_roll
+        self.start_bank_roll = bank_roll
+        self.reset()
+
+    def reset(self):
         self.stack = 0
-        self.left_num_buy_ins = num_buy_ins
         self.hole = None
         self.status = PlayerStatus.WAITING_HAND
         self.position = None
-        self.action_agent = action_agent
-        self.total_buy_in = 0
 
     def get_card(self, hole: PokerHole):
         assert self.hole is None
@@ -100,12 +106,34 @@ class PokerPlayer:
         assert self.stack >= 0 and cash_size >= 0, (self.stack, cash_size)
         self.stack += cash_size
 
-    def buy_in(self, buy_in: float):
+    def join_tournament(
+        self,
+        buy_in: float,
+        max_num_buy_ins: int,
+        time_bank: Optional[float] = None,
+    ):
+        """ """
+        self.left_num_buy_ins = max_num_buy_ins
+        self.time_bank = time_bank
+        self.try_buy_in(buy_in, buy_in)
+
+    def try_buy_in(self, min_buy_in: float, max_buy_in: float):
         assert np.isclose(self.stack, 0)
-        assert self.left_num_buy_ins > 0
-        self.total_buy_in = self.total_buy_in + buy_in
-        self.left_num_buy_ins = self.left_num_buy_ins - 1
-        self.stack = buy_in
+        assert min_buy_in > 0 and max_buy_in > 0 and max_buy_in >= min_buy_in
+        if self.left_num_buy_ins is not None and self.left_num_buy_ins == 0:
+            # Used all number of buy ins for tounament
+            self.status = PlayerStatus.ELIMINATED
+        elif min_buy_in > self.bank_roll:
+            # Cannot buy in if not enough bank roll
+            self.status = PlayerStatus.ELIMINATED
+        else:
+            self.status = PlayerStatus.SITTING_OUT
+            # TODO: Simply buy in Max possible buy-in amount currently
+            buy_in = min(max_buy_in, self.bank_roll)
+            self.bank_roll = self.bank_roll - buy_in
+            if self.left_num_buy_ins is not None:
+                self.left_num_buy_ins = self.left_num_buy_ins - 1
+            self.stack = buy_in
 
     def reset_hand(self):
         if self.hole is not None:
@@ -149,7 +177,11 @@ class PokerPlayer:
         return straddle
 
     def net_profit(self):
-        return self.stack - self.total_buy_in
+        return self.stack + self.bank_roll - self.start_bank_roll
+
+    def leave_game(self):
+        self.bank_roll += self.stack
+        self.reset()
 
     def is_sitting_out(self):
         return self.status == PlayerStatus.SITTING_OUT
@@ -164,8 +196,8 @@ class PokerPlayer:
     def is_eliminated(self):
         eliminated = False
         if self.status == PlayerStatus.ELIMINATED:
-            assert np.isclose(self.left_num_buy_ins, 0)
-            assert np.isclose(self.stack, 0)
+            assert self.left_num_buy_ins is None or np.isclose(self.left_num_buy_ins, 0)
+            assert np.isclose(self.stack, 0), self.stack
             eliminated = True
         return eliminated
 

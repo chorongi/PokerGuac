@@ -3,10 +3,14 @@ import math
 import numpy as np
 
 from .poker import PokerPlayer, PokerTable, AgentType, ALL_AGENT_TYPES
-from .poker.components.constants import MAX_NUM_PLAYERS, BOARD_NUM_CARDS
+from .poker.components.constants import (
+    MAX_NUM_PLAYERS,
+    MIN_NUM_PLAYERS,
+    BOARD_NUM_CARDS,
+)
 from .poker import build_action_agent
 from .arcade import ArcadePokerCard
-from typing import List, Dict, Tuple
+from typing import List, Optional, Tuple
 
 
 SCREEN_WIDTH = 1200
@@ -15,26 +19,72 @@ CARD_WIDTH_HEIGHT_RATIO = 1.452
 SCREEN_TITLE = "PokerGuac"
 
 
-def poker_init(
+def poker_tournament_init(
     player_names: List[str],
     agent_types: List[AgentType],
     num_players: int,
     small_blind: float = 1,
     big_blind: float = 3,
-    num_buy_ins: int = 1,
-    min_buy_in: float = 100,
-    max_buy_in: float = 300,
+    max_num_buy_ins: int = 1,
+    tournament_buy_in: float = 300,
+    time_bank: Optional[float] = None,
 ):
+    """
+    Currently only supports one table
+    """
     assert len(player_names) == len(agent_types)
     assert big_blind >= small_blind
-    assert num_buy_ins >= 1
-    assert max_buy_in >= min_buy_in
+    assert max_num_buy_ins >= 1
+    assert tournament_buy_in >= big_blind
     assert len(player_names) <= num_players
+    assert num_players >= MIN_NUM_PLAYERS
     players = [
         PokerPlayer(
             player_names[i],
-            num_buy_ins=num_buy_ins,
             action_agent=build_action_agent(agent_types[i]),
+            bank_roll=max_num_buy_ins * tournament_buy_in,
+        )
+        for i in range(num_players)
+    ]
+    table = PokerTable(
+        num_players=num_players,
+        big_blind=big_blind,
+        small_blind=small_blind,
+        min_buy_in=tournament_buy_in,
+        max_buy_in=tournament_buy_in,
+    )
+
+    for player in players:
+        player.join_tournament(tournament_buy_in, max_num_buy_ins, time_bank=time_bank)
+
+    for player in players:
+        table.seat_player(player)
+    return table, players
+
+
+def poker_cache_game_init(
+    player_names: List[str],
+    player_bank_rolls: List[float],
+    agent_types: List[AgentType],
+    num_players: int,
+    small_blind: float = 1,
+    big_blind: float = 3,
+    min_buy_in: float = 100,
+    max_buy_in: float = 300,
+):
+    """
+    Currently only supports one table
+    """
+    assert len(player_names) == len(agent_types)
+    assert big_blind >= small_blind
+    assert max_buy_in >= min_buy_in
+    assert len(player_names) <= num_players
+    assert num_players >= MIN_NUM_PLAYERS
+    players = [
+        PokerPlayer(
+            player_names[i],
+            action_agent=build_action_agent(agent_types[i]),
+            bank_roll=player_bank_rolls[i],
         )
         for i in range(num_players)
     ]
@@ -47,7 +97,7 @@ def poker_init(
     )
 
     for player in players:
-        player.buy_in(np.random.uniform(min_buy_in, max_buy_in))
+        player.try_buy_in(min_buy_in, max_buy_in)
 
     for player in players:
         table.seat_player(player)
@@ -61,7 +111,7 @@ class PokerGuacEngine(arcade.Window):
     index_to_player_inner_xy: List[Tuple[float, float]]
     index_to_player_outer_xy: List[Tuple[float, float]]
     index_to_board_card_cxcy: List[Tuple[float, float]]
-    default_font_size: int = 8
+    default_font_size: int = 9
     default_font: str = "Arial"
 
     def __init__(self):
@@ -73,6 +123,7 @@ class PokerGuacEngine(arcade.Window):
         self.player_card_height = int(self.player_card_width * CARD_WIDTH_HEIGHT_RATIO)
         self.board_card_height = int(self.board_card_width * CARD_WIDTH_HEIGHT_RATIO)
         self.margin = int(self.width / 50)
+        self.angle_margin = math.pi / 50
         self.index_to_board_card_cxcy = [
             (
                 self.width / 2
@@ -104,8 +155,27 @@ class PokerGuacEngine(arcade.Window):
         cy = self.height / 2
         self.index_to_player_inner_xy = [
             (
-                cx + major_axis / 2 * math.cos(2 * math.pi / MAX_NUM_PLAYERS * i),
-                cy + minor_axis / 2 * math.sin(2 * math.pi / MAX_NUM_PLAYERS * i),
+                cx
+                + major_axis
+                / 2
+                * math.cos(2 * math.pi / MAX_NUM_PLAYERS * i + self.angle_margin),
+                cy
+                + minor_axis
+                / 2
+                * math.sin(2 * math.pi / MAX_NUM_PLAYERS * i + self.angle_margin),
+            )
+            for i in range(MAX_NUM_PLAYERS)
+        ]
+        self.index_to_button_xy = [
+            (
+                cx
+                + major_axis
+                / 2
+                * math.cos(2 * math.pi / MAX_NUM_PLAYERS * i - self.angle_margin),
+                cy
+                + minor_axis
+                / 2
+                * math.sin(2 * math.pi / MAX_NUM_PLAYERS * i - self.angle_margin),
             )
             for i in range(MAX_NUM_PLAYERS)
         ]
@@ -128,7 +198,9 @@ class PokerGuacEngine(arcade.Window):
         action_agent_types = list(
             np.random.choice(ALL_AGENT_TYPES, self.num_players, replace=True)
         )
-        self.table, _ = poker_init(player_names, action_agent_types, self.num_players)
+        self.table, _ = poker_tournament_init(
+            player_names, action_agent_types, self.num_players
+        )
 
     def on_draw(self):
         """
@@ -164,6 +236,7 @@ class PokerGuacEngine(arcade.Window):
                 player_x + self.player_card_width / 2 + self.margin / 10,
                 player_y,
             )
+            betx, bety = self.index_to_player_inner_xy[i]
             if player is not None:
                 # Draw player name
                 arcade.draw_text(
@@ -201,13 +274,21 @@ class PokerGuacEngine(arcade.Window):
                     self.player_card_list.append(arcade_card1)
                     self.player_card_list.append(arcade_card2)
                 self.player_card_list.draw()
-                # Draw player status & bets
+                # Draw player status
                 bet = player_bets[i]
                 status = player.status
                 arcade.draw_text(
-                    f"{status} ${bet:.02f}",
+                    status,
                     card_pos1[0] - self.player_card_width / 2,
                     card_pos1[1] - self.player_card_height / 2 - self.margin,
+                    arcade.color.BLACK,
+                    self.default_font_size,
+                    font_name=self.default_font,
+                )
+                arcade.draw_text(
+                    f"$ {bet:.02f}",
+                    betx,
+                    bety,
                     arcade.color.BLACK,
                     self.default_font_size,
                     font_name=self.default_font,
@@ -251,7 +332,7 @@ class PokerGuacEngine(arcade.Window):
         self.draw_pot_size()
 
     def draw_button(self):
-        bx, by = self.index_to_player_inner_xy[self.table.button]
+        bx, by = self.index_to_button_xy[self.table.button]
         radius = self.margin / 2
         arcade.draw_circle_filled(bx, by, radius, arcade.color.VANILLA)
         arcade.draw_text(

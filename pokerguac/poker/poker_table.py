@@ -101,10 +101,6 @@ class PokerTable:
             if player is None:
                 continue
             player.reset_hand()
-            if np.isclose(player.stack, 0):
-                # Ask player to buy in
-                buy_in = np.random.uniform(low=self.min_buy_in, high=self.max_buy_in)
-                player.buy_in(buy_in)
         self.per_player_action = {
             stage: [[] for _ in range(self.num_players)] for stage in ALL_POKER_STAGES
         }
@@ -232,10 +228,7 @@ class PokerTable:
             else:
                 assert player.stack >= 0, (player.name, player.stack)
                 if np.isclose(player.stack, 0):
-                    # TODO: Try to Buy In Player with a random amount
-                    player.status = PlayerStatus.SITTING_OUT
-                    if player.left_num_buy_ins == 0:
-                        player.status = PlayerStatus.ELIMINATED
+                    player.try_buy_in(self.min_buy_in, self.max_buy_in)
                     if player.is_eliminated() and player not in self.eliminated_players:
                         # Eliminate Player
                         self.eliminated_players[player] = self.hand_number
@@ -442,16 +435,16 @@ class PokerTable:
 
     def seat_player(self, new_player: PokerPlayer) -> bool:
         empty_seats = []
-        assert (
-            not new_player.is_eliminated()
-        ), f"Cannot seat an eliminated player {new_player}"
-        for i, player in enumerate(self.players):
-            if player is None:
-                empty_seats.append(i)
-        success = len(empty_seats) > 0
-        if success:
-            seat = np.random.choice(empty_seats)
-            self.players[seat] = new_player
+        if new_player.is_eliminated():
+            success = False
+        else:
+            for i, player in enumerate(self.players):
+                if player is None:
+                    empty_seats.append(i)
+            success = len(empty_seats) > 0
+            if success:
+                seat = np.random.choice(empty_seats)
+                self.players[seat] = new_player
         return success
 
     def update_blind(self, small_blind: float, big_blind: float):
