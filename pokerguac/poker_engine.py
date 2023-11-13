@@ -1,4 +1,6 @@
 import arcade
+import arcade.color
+import arcade.csscolor
 import math
 import numpy as np
 
@@ -9,7 +11,7 @@ from .poker.components.constants import (
     BOARD_NUM_CARDS,
 )
 from .poker import build_action_agent
-from .arcade import ArcadePokerCard
+from .poker_arcade import ArcadePokerCard
 from typing import List, Optional, Tuple
 
 
@@ -95,7 +97,6 @@ def poker_cache_game_init(
         min_buy_in=min_buy_in,
         max_buy_in=max_buy_in,
     )
-    table.simulation_on()
 
     for player in players:
         player.try_buy_in(min_buy_in, max_buy_in)
@@ -105,7 +106,7 @@ def poker_cache_game_init(
     return table, players
 
 
-class PokerGuacEngine(arcade.Window):
+class PokerGuacHoldemEngine(arcade.Window):
     players: List[PokerPlayer]
     table: PokerTable
     num_players: int
@@ -125,6 +126,7 @@ class PokerGuacEngine(arcade.Window):
         self.board_card_height = int(self.board_card_width * CARD_WIDTH_HEIGHT_RATIO)
         self.margin = int(self.width / 50)
         self.angle_margin = math.pi / 50
+        self.total_time = 0
         self.index_to_board_card_cxcy = [
             (
                 self.width / 2

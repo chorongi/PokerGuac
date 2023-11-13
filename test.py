@@ -50,6 +50,14 @@ def test_cache_game_play(
         before_total_bank_roll = 0
         for player in players:
             before_total_bank_roll += player.bank_roll + player.stack
+
+        # Prepare player for play
+        for player in players:
+            player.join_next_hand()
+
+        # Start game
+        table.activate_table()
+
         while not table.finished():
             if iter > max_iters:
                 break
@@ -75,7 +83,9 @@ def test_cache_game_play(
             print(table.player_rankings_report()[1])
 
 
-def test_tournament_play(test_epochs: int, report_period: int, test_period: int):
+def test_tournament_play(
+    test_epochs: int, report_period: int, test_period: int, blind_update_period: int
+):
     player_names = [
         "Alex",
         "Jenny",
@@ -91,7 +101,6 @@ def test_tournament_play(test_epochs: int, report_period: int, test_period: int)
     small_blind = 1
     num_buy_ins = 3
     tournament_buy_in = 300
-    blind_update_period = 100
 
     for epoch in trange(test_epochs):
         iter = 1
@@ -109,9 +118,18 @@ def test_tournament_play(test_epochs: int, report_period: int, test_period: int)
             num_buy_ins,
             tournament_buy_in,
         )
+
         before_total_bank_roll = 0
         for player in players:
             before_total_bank_roll += player.bank_roll + player.stack
+
+        # Prepare player for play
+        for player in players:
+            player.join_next_hand()
+
+        # Start game
+        table.activate_table()
+
         while not table.finished():
             table.play_hand()
             if iter % blind_update_period == 0:
@@ -140,11 +158,12 @@ def test_tournament_play(test_epochs: int, report_period: int, test_period: int)
 
 REPORT_PERIOD = 25
 NUM_TEST_EPOCHS = 100
+BLIND_UPDATE_PERIOD = 50
 MAX_ITERS = 10000
 TEST_PERIOD = 10
 
 test_cache_game_play(NUM_TEST_EPOCHS, REPORT_PERIOD, TEST_PERIOD, MAX_ITERS)
-test_tournament_play(NUM_TEST_EPOCHS, REPORT_PERIOD, TEST_PERIOD)
+test_tournament_play(NUM_TEST_EPOCHS, REPORT_PERIOD, TEST_PERIOD, BLIND_UPDATE_PERIOD)
 
 # test_game_simulation()
 # test_board = [

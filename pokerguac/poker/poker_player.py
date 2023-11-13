@@ -1,45 +1,62 @@
 import numpy as np
 from queue import Queue
 from typing import Optional, List, Dict, Tuple, Sequence
-from .components.card import PokerHole, PokerBoard
+from .components.card import PokerBoard, PokerHole, PokerCard
 from .components.constants import (
     PlayerAction,
     PlayerPosition,
     PlayerStatus,
     PokerStage,
+    PlayerType,
     ALL_POKER_STAGES,
+    INVALID_NAMES,
 )
 from .agents.poker_agent import PokerAgent
-
-MAX_HAND_CACHE_SIZE = 100
 
 
 class PokerPlayer:
     name: str
     stack: float
     position: Optional[PlayerPosition]
-    status: PlayerStatus
     hole: Optional[PokerHole]
-    past_hands = Queue(MAX_HAND_CACHE_SIZE)
+    status: PlayerStatus
+    stage_bet: float
     bank_roll: float
     start_bank_roll: float
     time_bank: Optional[float] = None
     left_num_buy_ins: Optional[int] = None
+    type: PlayerType
 
     def __init__(self, name: str, action_agent: PokerAgent, bank_roll: float):
+        assert name.lower() not in INVALID_NAMES
         self.name = name
         self.action_agent = action_agent
         self.bank_roll = bank_roll
         self.start_bank_roll = bank_roll
+        self.stack = 0
         self.reset()
 
     def reset(self):
-        self.stack = 0
+        self.stage_bet = 0
         self.hole = None
-        self.status = PlayerStatus.WAITING_HAND
+        self.status = PlayerStatus.SITTING_OUT
         self.position = None
 
-    def get_card(self, hole: PokerHole):
+    def stage_reset(self, stage: PokerStage):
+        self.stage_bet = 0
+        if self.is_active():
+            self.status = (
+                PlayerStatus.CALL
+                if stage == PokerStage.RIVER
+                else PlayerStatus.WAITING_TURN
+            )
+
+    def hand_reset(self):
+        self.hole = None
+        if not self.is_eliminated() or not self.is_sitting_out():
+            self.status = PlayerStatus.WAITING_TURN
+
+    def set_card(self, hole: PokerHole):
         assert self.hole is None
         self.hole = hole
 
@@ -95,6 +112,7 @@ class PokerPlayer:
         else:
             self.status = PlayerStatus.CALL
         self.stack = self.stack - bet
+        self.stage_bet += bet
 
         return bet, action
 
@@ -127,26 +145,14 @@ class PokerPlayer:
             # Cannot buy in if not enough bank roll
             self.status = PlayerStatus.ELIMINATED
         else:
-            self.status = PlayerStatus.SITTING_OUT
             # TODO: Simply buy in Max possible buy-in amount currently
+            # TODO: Player status should be sitting out unless player wants to rejoin
+            self.status = PlayerStatus.WAITING_HAND
             buy_in = min(max_buy_in, self.bank_roll)
             self.bank_roll = self.bank_roll - buy_in
             if self.left_num_buy_ins is not None:
                 self.left_num_buy_ins = self.left_num_buy_ins - 1
             self.stack = buy_in
-
-    def reset_hand(self):
-        if self.hole is not None:
-            assert self.past_hands.qsize() <= MAX_HAND_CACHE_SIZE
-            if self.past_hands.qsize() == MAX_HAND_CACHE_SIZE:
-                self.past_hands.get()
-            self.past_hands.put(self.hole)
-        self.hole = None
-        if not self.is_eliminated() or not self.status == PlayerStatus.SITTING_OUT:
-            self.status = PlayerStatus.WAITING_TURN
-
-    def join_next_hand(self):
-        self.status = PlayerStatus.WAITING_HAND
 
     def blind(self, small_blind: float, big_blind: float) -> float:
         assert self.stack > 0
@@ -162,6 +168,7 @@ class PokerPlayer:
             self.status = PlayerStatus.RAISE
         blind_val = min(self.stack, blind)
         self.stack = self.stack - blind_val
+        self.stage_bet += blind_val
         return blind_val
 
     def straddle(
@@ -174,6 +181,7 @@ class PokerPlayer:
         if straddle:
             self.status = PlayerStatus.RAISE
             self.stack = self.stack - 2 * big_blind
+            self.stage_bet += 2 * big_blind
         return straddle
 
     def net_profit(self):
@@ -183,14 +191,15 @@ class PokerPlayer:
         self.bank_roll += self.stack
         self.reset()
 
+    def join_next_hand(self):
+        self.status = PlayerStatus.WAITING_HAND
+
     def is_sitting_out(self):
         return self.status == PlayerStatus.SITTING_OUT
 
     def is_all_in(self):
-        return (
-            np.isclose(self.stack, 0)
-            and self.status != PlayerStatus.FOLD
-            and self.status != PlayerStatus.SITTING_OUT
+        return np.isclose(self.stack, 0) and (
+            self.status == PlayerStatus.CALL or self.status == PlayerStatus.RAISE
         )
 
     def is_eliminated(self):
@@ -222,9 +231,9 @@ class PokerPlayer:
             and not self.is_sitting_out()
         )
 
-    def is_playing(self):
+    def is_joining(self):
         """
-        Player is still playing the game (in a state that the player can receive a new hand)
+        Player is in a state to receive a new hand.
         """
         return not self.is_eliminated() and not self.is_sitting_out()
 

@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Mapping
 
 # fmt: off
 POKER_CARD_DECK = [
@@ -17,6 +18,8 @@ POKER_CARD_DECK = [
     "qc", "qd", "qh", "qs",
 ]
 # fmt: on
+
+INVALID_NAMES = ["empty", "", "\n"]
 
 
 class PrintableEnum(Enum):
@@ -61,12 +64,45 @@ class PlayerPosition(PrintableEnum):
     CUTOFF = 7
     BUTTON = 8
 
+    def __str__(self):
+        enum_to_str: Mapping[str, str] = {
+            "SMALLBLIND": "SB",
+            "BIGBLIND": "BB",
+            "UTG": "UTG",
+            "UTG1": "UTG1",
+            "UTG2": "UTG2",
+            "LOWJACK": "LJ",
+            "HIGHJACK": "HJ",
+            "CUTOFF": "CO",
+            "BUTTON": "B",
+        }
+        return enum_to_str[self.name]
+
+
+class PlayerType(PrintableEnum):
+    PERSON = 0
+    AI = 1
+
 
 class PokerStage(PrintableEnum):
     PREFLOP = 0
     FLOP = 1
     TURN = 2
     RIVER = 3
+
+    def next(self):
+        return PokerStage((self.value + 1) % len(list(self.__class__)))
+
+
+class PokerTableState(PrintableEnum):
+    BLIND = 0
+    STRADDLE = 1
+    DRAW_CARDS = 2
+    PLAYER_ACTION = 3
+    END_STAGE = 4
+    END_ROUND = 5
+    MOVE_BUTTON = 6
+    PAUSED = 7
 
 
 ALL_POKER_STAGES = [
@@ -102,6 +138,10 @@ NUMBER_STRING_TO_INT = {
 MAX_NUM_PLAYERS = 9
 MIN_NUM_PLAYERS = 2
 BOARD_NUM_CARDS = 5
+NUM_FLOP_CARDS = 3
+NUM_TURN_CARDS = 1
+NUM_RIVER_CARDS = 1
+HOLDEM_NUM_PLAYER_CARDS = 2
 
 NUM_PLAYERS_TO_POSITIONS = {
     2: [PlayerPosition.SMALLBLIND, PlayerPosition.BIGBLIND],

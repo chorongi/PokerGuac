@@ -1,6 +1,7 @@
 import arcade
+from os.path import exists as path_exists
 from ..poker.components import PokerCard
-from typing import Optional
+from typing import Optional, Tuple
 from PIL import Image
 
 
@@ -26,3 +27,18 @@ class ArcadePokerCard(arcade.Sprite):
 
         # Call the parent
         super().__init__(self.front_image, scale, hit_box_algorithm="None")
+
+    @classmethod
+    def get_size(cls, card_width: float) -> Tuple[int, int]:
+        """
+        Returns
+        -------
+        (h, w): card size preserving card img file width height ratio
+        """
+        back_image = f"./assets/poker_deck/back.png"
+        assert path_exists(back_image), f"{back_image} does not exist!"
+        im_w, im_h = Image.open(back_image).size
+        scale = card_width / im_w
+        card_w = round(im_w * scale)
+        card_h = round(im_h * scale)
+        return (card_h, card_w)
