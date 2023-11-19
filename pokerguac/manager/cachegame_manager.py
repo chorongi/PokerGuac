@@ -1,9 +1,12 @@
+import math
+
 from ..poker import PokerTable, PokerPlayer
 from typing import List, Dict
-from ..poker.components.constants import MIN_NUM_PLAYERS
+from ..poker.components.constants import MAX_NUM_PLAYERS
+from .poker_manager import PokerGameManager
 
 
-class CacheGameManager:
+class CacheGameManager(PokerGameManager):
     tables: List[PokerTable]
     players: List[PokerPlayer]
     player_table_assignments: Dict[PokerPlayer, PokerTable]
@@ -15,32 +18,11 @@ class CacheGameManager:
         self.player_table_assignments = {}
         self.waitlist = []
 
-    def register_player(self, player: PokerPlayer):
-        self.waitlist.append(player)
+    def rebalance_tables(self) -> None:
+        return super().rebalance_tables()
 
-    def try_seat_player(self):
-        success = True
-        while success and self.waitlist:
-            success = False
-            player = self.waitlist[0]
-            for table in self.tables:
-                success = table.seat_player(player)
-                if success:
-                    self.waitlist.pop(0)
-                    break
+    def update_blind(self) -> None:
+        pass
 
-    def update_table_status(self):
-        """
-        Activate tables that have enough active players and
-        Break tables that do not have enough active players
-        """
-        for table in self.tables:
-            if table.can_activate():
-                table.activate_table()
-            elif table.finished():
-                remaining_players = table.break_table()
-                self.waitlist = remaining_players + self.waitlist
-            elif table.paused():
-                table.active = False
-            else:
-                continue
+    def get_game_status(self) -> List[str]:
+        return super().get_game_status()

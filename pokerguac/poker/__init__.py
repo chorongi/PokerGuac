@@ -2,7 +2,7 @@ from enum import Enum
 from .agents import PokerAgent, build_action_agent, ALL_AGENT_TYPES, AgentType
 from .poker_player import PokerPlayer
 from .poker_table import PokerTable
-from .components import MIN_NUM_PLAYERS
+from .components import MIN_NUM_PLAYERS, MAX_NUM_PLAYERS, MIN_BLIND_LEVELS
 
 from typing import List, Optional
 

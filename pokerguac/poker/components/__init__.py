@@ -5,4 +5,6 @@ from .constants import (
     PlayerPosition,
     PokerStage,
     MIN_NUM_PLAYERS,
+    MAX_NUM_PLAYERS,
+    MIN_BLIND_LEVELS,
 )

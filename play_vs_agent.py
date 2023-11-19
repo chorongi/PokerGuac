@@ -5,7 +5,7 @@ os.environ["PYOPENGL_PLATFORM"] = "osmesa"
 
 import arcade
 
-from pokerguac.poker_enginev2 import PokerGuacHoldemEngine
+from pokerguac.poker_engine import PokerGuacHoldemEngine
 
 
 def main():
