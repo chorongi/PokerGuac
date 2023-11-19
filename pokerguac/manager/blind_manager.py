@@ -1,13 +1,21 @@
 from abc import ABC, abstractmethod
 import math
 import time
+from typing import Literal, Tuple
 from ..poker import (
     MIN_NUM_PLAYERS,
     MAX_NUM_PLAYERS,
     MIN_BLIND_LEVELS,
 )
+from ..config import BlindManagerType, TournamentConfig
 
-__all__ = ["BlindManager", "TimeBlindManager", "HandBlindManager"]
+__all__ = [
+    "BlindManager",
+    "TimeBlindManager",
+    "HandBlindManager",
+    "build_blind_manager",
+    "BlindManagerType",
+]
 
 
 class BlindManager(ABC):
@@ -65,6 +73,15 @@ class BlindManager(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def until_next_blind(self, game_progress: float) -> float:
+        """
+        Returns
+        -------
+        time or number of hands until next blind update
+        """
+        raise NotImplementedError
+
     def reset(self):
         self.blind_start = 0
         self.curr_level = 1
@@ -88,6 +105,11 @@ class BlindManager(ABC):
         self.blind = round(self.blind * self.ratio / (10**num_digits)) * (
             10**num_digits
         )
+
+    def next_blind(self) -> Tuple[float, float]:
+        num_digits = max(int(math.floor(math.log10(self.blind))) - 1, 0)
+        blind = round(self.blind * self.ratio / (10**num_digits)) * (10**num_digits)
+        return blind, blind // 2
 
 
 class HandBlindManager(BlindManager):
@@ -152,6 +174,9 @@ class HandBlindManager(BlindManager):
             self.curr_level += 1
             self.blind_start = game_progress
 
+    def until_next_blind(self, game_progress: float) -> float:
+        return self.blind_start + self.blind_period - game_progress
+
 
 class TimeBlindManager(BlindManager):
     def __init__(
@@ -205,3 +230,24 @@ class TimeBlindManager(BlindManager):
             self.update_blind()
             self.curr_level += 1
             self.blind_start = game_progress
+
+    def until_next_blind(self, game_progress: float) -> float:
+        return self.blind_start / 3600 + self.blind_period - game_progress / 3600
+
+
+def build_blind_manager(cfg: TournamentConfig) -> BlindManager:
+    blind_manager_type = cfg["blind_manager_type"]
+    if blind_manager_type == "hand":
+        blind_manager_cls = HandBlindManager
+    elif blind_manager_type == "time":
+        blind_manager_cls = TimeBlindManager
+    else:
+        raise ValueError(f"Unsupported blind manager type {blind_manager_type}")
+
+    return blind_manager_cls(
+        target_duration=cfg["target_duration"],
+        target_num_entries=cfg["target_num_entries"],
+        blind_update_period=cfg["blind_update_period"],
+        base_starting_stack=cfg["base_starting_stack"],
+        start_effective_stack=cfg["start_effective_stack"],
+    )

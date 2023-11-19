@@ -7,6 +7,12 @@ from .components import MIN_NUM_PLAYERS, MAX_NUM_PLAYERS, MIN_BLIND_LEVELS
 from typing import List, Optional
 
 
+class PokerGameType(Enum):
+    HOLDEM = 1
+    PLO = 2
+    PLO_HILO = 3
+
+
 def poker_tournament_init(
     player_names: List[str],
     agent_types: List[AgentType],

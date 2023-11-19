@@ -20,6 +20,7 @@ from .components.constants import (
 from .components.card import PokerCard, PokerBoard, PokerHole
 from .poker_player import PokerPlayer, PlayerAction, PlayerStatus
 from .components.rules import rank_hands
+from ..config import TableGameConfig, PokerGameType
 
 
 CARD_DECK_SIZE = 52
@@ -39,11 +40,8 @@ class PokerTable:
     active: bool
     stage: PokerStage
     state: PokerTableState
-    big_blind: float
-    small_blind: float
-    min_buy_in: float
-    max_buy_in: float
     hand_number: int
+    cfg: TableGameConfig
 
     def __init__(
         self,
@@ -53,15 +51,19 @@ class PokerTable:
         min_buy_in: float,
         max_buy_in: float,
         num_player_cards: int = HOLDEM_NUM_PLAYER_CARDS,
+        game_type: PokerGameType = PokerGameType.HOLDEM,
     ):
         assert num_players >= MIN_NUM_PLAYERS and num_players <= MAX_NUM_PLAYERS
         self.num_players = num_players
-        self.big_blind = big_blind
-        self.small_blind = small_blind
-        self.min_buy_in = min_buy_in
-        self.max_buy_in = max_buy_in
         self.num_player_cards = num_player_cards
         self.active = False
+        self.cfg = TableGameConfig(
+            big_blind=big_blind,
+            small_blind=small_blind,
+            min_buy_in=min_buy_in,
+            max_buy_in=max_buy_in,
+            game_type=game_type,
+        )
         self.reset()
 
     def reset(self):
@@ -108,6 +110,7 @@ class PokerTable:
 
     def move_button(self):
         # move button
+        assert self.button is not None
         self.button = (self.button + 1) % self.num_players
         button_player = self.players[self.button]
         while button_player is None or not button_player.is_joining():
@@ -116,6 +119,7 @@ class PokerTable:
 
     def _assign_positions(self):
         # Assign positions for active players
+        assert self.button is not None
         button_idx = self.button
         self.num_hand_players = self.get_num_hand_players()
         self.num_alive_hand_players = self.num_hand_players
@@ -133,6 +137,7 @@ class PokerTable:
         assert count == len(player_positions)
 
     def _next(self):
+        assert self.player_in_action is not None
         self.player_in_action = (self.player_in_action + 1) % self.num_players
         curr_player = self.players[self.player_in_action]
         counter = 1
@@ -159,9 +164,10 @@ class PokerTable:
         self._assign_positions()
 
     def _blind(self):
+        assert self.player_in_action is not None
         small_blind = self.players[self.player_in_action]
         assert small_blind is not None
-        bet = small_blind.blind(self.small_blind, self.big_blind)
+        bet = small_blind.blind(self.cfg["small_blind"], self.cfg["big_blind"])
         self.per_player_action[self.stage][self.player_in_action].append(
             (PlayerAction.SMALL_BLIND, bet)
         )
@@ -169,7 +175,7 @@ class PokerTable:
 
         big_blind = self.players[self.player_in_action]
         assert big_blind is not None
-        bet = big_blind.blind(self.big_blind, self.big_blind)
+        bet = big_blind.blind(self.cfg["big_blind"], self.cfg["big_blind"])
         self.per_player_action[self.stage][self.player_in_action].append(
             (PlayerAction.BIG_BLIND, bet)
         )
@@ -188,13 +194,14 @@ class PokerTable:
         return stacks
 
     def _straddle(self):
+        assert self.player_in_action is not None
         straddle_player = self.players[self.player_in_action]
         assert straddle_player is not None
         if straddle_player.straddle(
-            self.get_player_stacks(), self.player_in_action, self.big_blind
+            self.get_player_stacks(), self.player_in_action, self.cfg["big_blind"]
         ):
             self.per_player_action[self.stage][self.player_in_action].append(
-                (PlayerAction.STRADDLE, 2 * self.big_blind)
+                (PlayerAction.STRADDLE, 2 * self.cfg["big_blind"])
             )
             for player in self.players:
                 if (
@@ -213,6 +220,7 @@ class PokerTable:
         self.active_card_deck = self.cards.copy()
 
     def _deal(self):
+        assert self.button is not None
         hands: List[List[PokerCard]] = [[] for _ in range(self.num_player_cards)]
         for i in range(self.num_player_cards):
             for _ in range(self.num_hand_players):
@@ -250,12 +258,13 @@ class PokerTable:
         return action_finished
 
     def player_action(self, curr_player: PokerPlayer):
+        assert self.player_in_action is not None
         bet, action = curr_player.action(
             self.board,
             self.per_player_action,
             self.get_player_stacks(),
             self.player_in_action,
-            self.big_blind,
+            self.cfg["big_blind"],
         )
         self.per_player_action[self.stage][self.player_in_action].append((action, bet))
         if action == PlayerAction.RAISE:
@@ -267,6 +276,7 @@ class PokerTable:
         self._next()
 
     def _action(self):
+        assert self.player_in_action is not None
         while not self._action_finished():
             curr_player = self.players[self.player_in_action]
             assert curr_player is not None
@@ -289,7 +299,7 @@ class PokerTable:
             else:
                 assert player.stack >= 0, (player.name, player.stack)
                 if np.isclose(player.stack, 0):
-                    player.try_buy_in(self.min_buy_in, self.max_buy_in)
+                    player.try_buy_in(self.cfg["min_buy_in"], self.cfg["max_buy_in"])
                     if player.is_eliminated() and player not in self.eliminated_players:
                         # Eliminate Player
                         self.eliminated_players[player] = self.hand_number
@@ -565,6 +575,7 @@ class PokerTable:
                     self.state = PokerTableState.PLAYER_ACTION
             case PokerTableState.PLAYER_ACTION:
                 if not self._action_finished():
+                    assert self.player_in_action is not None
                     curr_player = self.players[self.player_in_action]
                     assert curr_player is not None
                     assert curr_player.stack > 0, curr_player.stack
@@ -614,8 +625,8 @@ class PokerTable:
         return success
 
     def update_blind(self, small_blind: float, big_blind: float):
-        self.small_blind = small_blind
-        self.big_blind = big_blind
+        self.cfg["small_blind"] = small_blind
+        self.cfg["big_blind"] = big_blind
 
     def player_has_holes(self) -> bool:
         for player in self.players:
